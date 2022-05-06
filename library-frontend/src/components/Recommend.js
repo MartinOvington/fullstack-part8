@@ -1,9 +1,9 @@
 import { useQuery } from '@apollo/client'
-import { ALL_BOOKS } from '../queries'
+import { BOOKS_BY_GENRE } from '../queries'
 import BookTable from './BookTable'
 
 const Recommend = ({ show, genre }) => {
-  const result = useQuery(ALL_BOOKS)
+  const result = useQuery(BOOKS_BY_GENRE, { variables: { genre } })
   if (!show) {
     return null
   }
