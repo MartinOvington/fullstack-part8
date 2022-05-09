@@ -1,6 +1,8 @@
 require('dotenv').config()
 const { UserInputError, AuthenticationError } = require('apollo-server')
 const jwt = require('jsonwebtoken')
+const { PubSub } = require('graphql-subscriptions')
+const pubsub = new PubSub()
 
 const Book = require('./models/book')
 const Author = require('./models/author')
@@ -44,29 +46,32 @@ const resolvers = {
       }
       const authorObj = { name: args.author, born: null }
       const foundAuthor = await Author.findOne({ name: args.author })
+      let auth_id
       if (foundAuthor) {
-        const book = new Book({ ...args, author: foundAuthor._id })
-        try {
-          await book.save()
-        } catch (error) {
-          throw new UserInputError(error.messge, {
-            invalidArgs: args,
-          })
-        }
-        return book
+        auth_id = foundAuthor._id
       } else {
         const author = new Author({ name: args.author, born: null })
-        const book = new Book({ ...args, author: author.id })
+        auth_id = author.id
         try {
-          await book.save()
           await author.save()
         } catch (error) {
           throw new UserInputError(error.messge, {
             invalidArgs: args,
           })
         }
-        return book
       }
+      const book = new Book({ ...args, author: auth_id })
+      try {
+        await book.save()
+      } catch (error) {
+        throw new UserInputError(error.messge, {
+          invalidArgs: args,
+        })
+      }
+
+      pubsub.publish('BOOK_ADDED', { bookAdded: book })
+
+      return book
     },
     editAuthor: async (root, args, context) => {
       if (!context.currentUser) {
@@ -119,6 +124,11 @@ const resolvers = {
         value: jwt.sign(userForToken, SECRET),
         genre: user.favoriteGenre,
       }
+    },
+  },
+  Subscription: {
+    bookAdded: {
+      subscribe: () => pubsub.asyncIterator(['BOOK_ADDED']),
     },
   },
 }
