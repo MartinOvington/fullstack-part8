@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { useQuery, useApolloClient, useSubscription } from '@apollo/client'
+import { useApolloClient, useSubscription } from '@apollo/client'
 import Authors from './components/Authors'
 import Books from './components/Books'
 import NewBook from './components/NewBook'
 import LoginForm from './components/LoginForm'
 import Recommend from './components/Recommend'
-import { BOOK_ADDED } from './queries'
+import { ALL_AUTHORS, BOOK_ADDED, BOOKS_BY_GENRE } from './queries'
 
 const App = () => {
   const [page, setPage] = useState('authors')
@@ -15,7 +15,17 @@ const App = () => {
 
   useSubscription(BOOK_ADDED, {
     onSubscriptionData: ({ subscriptionData }) => {
-      window.alert(`New book added: ${subscriptionData.data.bookAdded.title}`)
+      const addedBook = subscriptionData.data.bookAdded
+      window.alert(`New book added: ${addedBook.title}`)
+
+      client.cache.updateQuery(
+        { query: BOOKS_BY_GENRE, variables: { genre: null } },
+        ({ allBooks }) => {
+          return {
+            allBooks: allBooks.concat(addedBook),
+          }
+        }
+      )
     },
   })
 
