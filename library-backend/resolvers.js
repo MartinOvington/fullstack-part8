@@ -33,9 +33,6 @@ const resolvers = {
     allAuthors: async () => Author.find({}),
     me: (root, args, context) => context.currentUser,
   },
-  Author: {
-    bookCount: async (root) => Book.find({ author: root.id }).countDocuments(),
-  },
   Book: {
     author: async (root) => Author.findById(root.author),
   },
@@ -49,6 +46,14 @@ const resolvers = {
       let auth_id
       if (foundAuthor) {
         auth_id = foundAuthor._id
+        foundAuthor.bookCount++
+        try {
+          await foundAuthor.save()
+        } catch (error) {
+          throw new UserInputError(error.messge, {
+            invalidArgs: args,
+          })
+        }
       } else {
         const author = new Author({ name: args.author, born: null })
         auth_id = author.id
